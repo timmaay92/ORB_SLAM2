@@ -27,6 +27,7 @@ namespace ORB_SLAM2
 
 Map::Map():mnMaxKFid(0),mnBigChangeIdx(0)
 {
+    IsMapScaled = false;
 }
 
 void Map::AddKeyFrame(KeyFrame *pKF)
@@ -128,6 +129,21 @@ void Map::clear()
     mnMaxKFid = 0;
     mvpReferenceMapPoints.clear();
     mvpKeyFrameOrigins.clear();
+
+    IsMapScaled = false;
 }
+
+template<class Archive>
+void Map::serialize(Archive &ar, const unsigned int version)
+{
+    // don't save mutex
+    ar & mspMapPoints;
+    ar & mvpKeyFrameOrigins;
+    ar & mspKeyFrames;
+    ar & mvpReferenceMapPoints;
+    ar & mnMaxKFid & mnBigChangeIdx;
+}
+template void Map::serialize(boost::archive::binary_iarchive&, const unsigned int);
+template void Map::serialize(boost::archive::binary_oarchive&, const unsigned int);
 
 } //namespace ORB_SLAM

@@ -19,7 +19,6 @@
 */
 
 #include "KeyFrame.h"
-#include "Converter.h"
 #include "ORBmatcher.h"
 #include<mutex>
 
@@ -54,6 +53,7 @@ KeyFrame::KeyFrame(Frame &F, Map *pMap, KeyFrameDatabase *pKFDB):
     }
 
     SetPose(F.mTcw);    
+    SetOdomPose(F.mTf_w_c);
 }
 
 void KeyFrame::ComputeBoW()
@@ -83,10 +83,23 @@ void KeyFrame::SetPose(const cv::Mat &Tcw_)
     Cw = Twc*center;
 }
 
+void KeyFrame::SetOdomPose(const g2o::SE3Quat &TF_w_c)
+{
+    unique_lock<mutex> lock(mMutexPose);
+    mTF_w_c = TF_w_c;
+}
+
+
 cv::Mat KeyFrame::GetPose()
 {
     unique_lock<mutex> lock(mMutexPose);
     return Tcw.clone();
+}
+
+g2o::SE3Quat KeyFrame::GetOdomPose()
+{
+    unique_lock<mutex> lock(mMutexPose);
+    return mTF_w_c;
 }
 
 cv::Mat KeyFrame::GetPoseInverse()
@@ -95,11 +108,13 @@ cv::Mat KeyFrame::GetPoseInverse()
     return Twc.clone();
 }
 
+
 cv::Mat KeyFrame::GetCameraCenter()
 {
     unique_lock<mutex> lock(mMutexPose);
     return Ow.clone();
 }
+
 
 cv::Mat KeyFrame::GetStereoCenter()
 {
@@ -118,6 +133,39 @@ cv::Mat KeyFrame::GetTranslation()
 {
     unique_lock<mutex> lock(mMutexPose);
     return Tcw.rowRange(0,3).col(3).clone();
+}
+
+void KeyFrame::UpdateTranslation(float s)
+{
+    unique_lock<mutex> lock(mMutexPose);
+
+    Tcw.at<float>(0,3) *= s;
+    Tcw.at<float>(1,3) *= s;
+    Tcw.at<float>(2,3) *= s;
+}
+
+void KeyFrame::SetPreviousKF(KeyFrame* PrevKF)
+{
+    unique_lock<mutex> lock(mMutexPose);
+    mpPreviousKeyFrame = PrevKF;
+}
+
+void KeyFrame::SetNextKF(KeyFrame *NextKF)
+{
+    unique_lock<mutex> lock(mMutexPose);
+    mpNextKeyFrame = NextKF;
+}
+
+KeyFrame* KeyFrame::GetPreviousKF()
+{
+    unique_lock<mutex> lock(mMutexPose);
+    return mpPreviousKeyFrame;
+}
+
+KeyFrame* KeyFrame::GetNextKF()
+{
+    unique_lock<mutex> lock(mMutexPose);
+    return mpNextKeyFrame;
 }
 
 void KeyFrame::AddConnection(KeyFrame *pKF, const int &weight)
@@ -539,6 +587,8 @@ void KeyFrame::SetBadFlag()
         mbBad = true;
     }
 
+    mpPreviousKeyFrame->mpNextKeyFrame = mpNextKeyFrame;
+    mpNextKeyFrame->mpPreviousKeyFrame = mpPreviousKeyFrame;
 
     mpMap->EraseKeyFrame(this);
     mpKeyFrameDB->erase(this);
@@ -661,5 +711,89 @@ float KeyFrame::ComputeSceneMedianDepth(const int q)
 
     return vDepths[(vDepths.size()-1)/q];
 }
+
+// Default serializing Constructor
+KeyFrame::KeyFrame():
+    mnFrameId(0),  mTimeStamp(0.0), mnGridCols(FRAME_GRID_COLS), mnGridRows(FRAME_GRID_ROWS),
+    mfGridElementWidthInv(0.0), mfGridElementHeightInv(0.0),
+    mnTrackReferenceForFrame(0), mnFuseTargetForKF(0), mnBALocalForKF(0), mnBAFixedForKF(0),
+    mnLoopQuery(0), mnLoopWords(0), mnRelocQuery(0), mnRelocWords(0), mnBAGlobalForKF(0),
+    fx(0.0), fy(0.0), cx(0.0), cy(0.0), invfx(0.0), invfy(0.0),
+    mbf(0.0), mb(0.0), mThDepth(0.0), N(0), mnScaleLevels(0), mfScaleFactor(0),
+    mfLogScaleFactor(0.0),
+    mnMinX(0), mnMinY(0), mnMaxX(0),
+    mnMaxY(0)
+{}
+template<class Archive>
+void KeyFrame::serialize(Archive &ar, const unsigned int version)
+{
+    // no mutex needed vars
+    ar & nNextId;
+    ar & mnId;
+    ar & const_cast<long unsigned int &>(mnFrameId);
+    ar & const_cast<double &>(mTimeStamp);
+    // Grid related vars
+    ar & const_cast<int &>(mnGridCols);
+    ar & const_cast<int &>(mnGridRows);
+    ar & const_cast<float &>(mfGridElementWidthInv);
+    ar & const_cast<float &>(mfGridElementHeightInv);
+    // Tracking related vars
+    ar & mnTrackReferenceForFrame & mnFuseTargetForKF;
+    // LocalMaping related vars
+    ar & mnBALocalForKF & mnBAFixedForKF;
+    // KeyFrameDB related vars
+    ar & mnLoopQuery & mnLoopWords & mLoopScore & mnRelocQuery & mnRelocWords & mRelocScore;
+    // LoopClosing related vars
+    ar & mTcwGBA & mTcwBefGBA & mnBAGlobalForKF;
+    // calibration parameters
+    ar & const_cast<float &>(fx) & const_cast<float &>(fy) & const_cast<float &>(cx) & const_cast<float &>(cy);
+    ar & const_cast<float &>(invfx) & const_cast<float &>(invfy) & const_cast<float &>(mbf);
+    ar & const_cast<float &>(mb) & const_cast<float &>(mThDepth);
+    // Number of KeyPoints;
+    ar & const_cast<int &>(N);
+    // KeyPoints, stereo coordinate and descriptors
+    ar & const_cast<std::vector<cv::KeyPoint> &>(mvKeys);
+    ar & const_cast<std::vector<cv::KeyPoint> &>(mvKeysUn);
+    ar & const_cast<std::vector<float> &>(mvuRight);
+    ar & const_cast<std::vector<float> &>(mvDepth);
+    ar & const_cast<cv::Mat &>(mDescriptors);
+    // Bow
+    ar & mBowVec & mFeatVec;
+    // Pose relative to parent
+    ar & mTcp;
+    // Scale related
+    ar & const_cast<int &>(mnScaleLevels) & const_cast<float &>(mfScaleFactor) & const_cast<float &>(mfLogScaleFactor);
+    ar & const_cast<std::vector<float> &>(mvScaleFactors) & const_cast<std::vector<float> &>(mvLevelSigma2) & const_cast<std::vector<float> &>(mvInvLevelSigma2);
+    // Image bounds and calibration
+    ar & const_cast<int &>(mnMinX) & const_cast<int &>(mnMinY) & const_cast<int &>(mnMaxX) & const_cast<int &>(mnMaxY);
+    ar & const_cast<cv::Mat &>(mK);
+
+    // mutex needed vars, but don't lock mutex in the save/load procedure
+    {
+        unique_lock<mutex> lock_pose(mMutexPose);
+        ar & Tcw & Twc & Ow & Cw;
+    }
+    {
+        unique_lock<mutex> lock_feature(mMutexFeatures);
+        ar & mvpMapPoints; // hope boost deal with the pointer graph well
+    }
+    // BoW
+    ar & mpKeyFrameDB;
+    // mpORBvocabulary restore elsewhere(see SetORBvocab)
+    {
+        // Grid related
+        unique_lock<mutex> lock_connection(mMutexConnections);
+        ar & mGrid & mConnectedKeyFrameWeights & mvpOrderedConnectedKeyFrames & mvOrderedWeights;
+        // Spanning Tree and Loop Edges
+        ar & mbFirstConnection & mpParent & mspChildrens & mspLoopEdges;
+        // Bad flags
+        ar & mbNotErase & mbToBeErased & mbBad & mHalfBaseline;
+    }
+    // Map Points
+    ar & mpMap;
+    // don't save mutex
+}
+template void KeyFrame::serialize(boost::archive::binary_iarchive&, const unsigned int);
+template void KeyFrame::serialize(boost::archive::binary_oarchive&, const unsigned int);
 
 } //namespace ORB_SLAM

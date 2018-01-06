@@ -27,6 +27,7 @@
 
 #include <mutex>
 
+#include "BoostArchiver.h"
 
 
 namespace ORB_SLAM2
@@ -66,6 +67,18 @@ public:
     // This avoid that two points are created simultaneously in separate threads (id conflict)
     std::mutex mMutexPointCreation;
 
+
+    bool IsMapScaled;
+
+
+
+private:
+    // serialize is recommended to be private
+    friend class boost::serialization::access;
+    template<class Archive>
+    void serialize(Archive &ar, const unsigned int version);
+
+
 protected:
     std::set<MapPoint*> mspMapPoints;
     std::set<KeyFrame*> mspKeyFrames;
@@ -78,6 +91,7 @@ protected:
     int mnBigChangeIdx;
 
     std::mutex mMutexMap;
+
 };
 
 } //namespace ORB_SLAM

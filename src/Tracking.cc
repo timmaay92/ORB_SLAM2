@@ -43,7 +43,7 @@ using namespace std;
 namespace ORB_SLAM2
 {
 
-Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer, MapDrawer *pMapDrawer, Map *pMap, KeyFrameDatabase* pKFDB, const string &strSettingPath, const int sensor):
+Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer, MapDrawer *pMapDrawer, Map *pMap, KeyFrameDatabase* pKFDB, const string &strSettingPath, const int sensor, bool bReuseMap):
     mState(NO_IMAGES_YET), mSensor(sensor), mbOnlyTracking(false), mbVO(false), mpORBVocabulary(pVoc),
     mpKeyFrameDB(pKFDB), mpInitializer(static_cast<Initializer*>(NULL)), mpSystem(pSys), mpViewer(NULL),
     mpFrameDrawer(pFrameDrawer), mpMapDrawer(pMapDrawer), mpMap(pMap), mnLastRelocFrameId(0)
@@ -55,6 +55,7 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
     float fy = fSettings["Camera.fy"];
     float cx = fSettings["Camera.cx"];
     float cy = fSettings["Camera.cy"];
+    useOdometry = fSettings["Initializer.UseOdometry"];
 
     cv::Mat K = cv::Mat::eye(3,3,CV_32F);
     K.at<float>(0,0) = fx;
@@ -145,7 +146,8 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
         else
             mDepthMapFactor = 1.0f/mDepthMapFactor;
     }
-
+    if (bReuseMap)
+        mState = LOST;
 }
 
 void Tracking::SetLocalMapper(LocalMapping *pLocalMapper)
@@ -230,14 +232,18 @@ cv::Mat Tracking::GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const d
     mCurrentFrame = Frame(mImGray,imDepth,timestamp,mpORBextractorLeft,mpORBVocabulary,mK,mDistCoef,mbf,mThDepth);
 
     Track();
-
-    return mCurrentFrame.mTcw.clone();
+	
+if(!mCurrentFrame.mTcw.empty()){
+    cv::Mat copyCurrent = mCurrentFrame.mTcw.inv();
+    }
+	return mCurrentFrame.mTcw.clone();
 }
 
 
 cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp)
 {
     mImGray = im;
+
 
     if(mImGray.channels()==3)
     {
@@ -262,6 +268,40 @@ cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp)
     Track();
 
     return mCurrentFrame.mTcw.clone();
+
+}
+
+cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp, g2o::SE3Quat &TF_w_c)
+{
+    mImGray = im;
+
+
+    if(mImGray.channels()==3)
+    {
+        if(mbRGB)
+            cvtColor(mImGray,mImGray,CV_RGB2GRAY);
+        else
+            cvtColor(mImGray,mImGray,CV_BGR2GRAY);
+    }
+    else if(mImGray.channels()==4)
+    {
+        if(mbRGB)
+            cvtColor(mImGray,mImGray,CV_RGBA2GRAY);
+        else
+            cvtColor(mImGray,mImGray,CV_BGRA2GRAY);
+    }
+
+    if(mState==NOT_INITIALIZED || mState==NO_IMAGES_YET)
+        mCurrentFrame = Frame(mImGray,timestamp,mpIniORBextractor,mpORBVocabulary,mK,mDistCoef,mbf,mThDepth);
+    else
+        mCurrentFrame = Frame(mImGray,timestamp,mpORBextractorLeft,mpORBVocabulary,mK,mDistCoef,mbf,mThDepth);
+
+
+    mCurrentFrame.SetOdomPose(TF_w_c);
+    Track();
+
+    return mCurrentFrame.mTcw.clone();
+
 }
 
 void Tracking::Track()
@@ -420,6 +460,12 @@ void Tracking::Track()
         // If tracking were good, check if we insert a keyframe
         if(bOK)
         {
+            if(useOdometry)
+            {
+
+                // **** TODO update ****
+
+            }
             // Update motion model
             if(!mLastFrame.mTcw.empty())
             {
@@ -497,7 +543,8 @@ void Tracking::Track()
     else
     {
         // This can happen if tracking is lost
-        mlRelativeFramePoses.push_back(mlRelativeFramePoses.back());
+        if (!mlRelativeFramePoses.empty())
+            mlRelativeFramePoses.push_back(mlRelativeFramePoses.back());
         mlpReferences.push_back(mlpReferences.back());
         mlFrameTimes.push_back(mlFrameTimes.back());
         mlbLost.push_back(mState==LOST);
@@ -640,6 +687,18 @@ void Tracking::CreateInitialMapMonocular()
     KeyFrame* pKFini = new KeyFrame(mInitialFrame,mpMap,mpKeyFrameDB);
     KeyFrame* pKFcur = new KeyFrame(mCurrentFrame,mpMap,mpKeyFrameDB);
 
+    if(mpSystem->useOdometry)
+    {
+        // correct for origin of TF world
+        mO_w_c = mInitialFrame.GetOdomPose();
+        pKFini->SetOdomPose(Converter::toSE3Quat(cv::Mat::eye(4,4, CV_32F)));
+        g2o::SE3Quat T_w_c = mCurrentFrame.GetOdomPose();
+        pKFcur->SetOdomPose(mO_w_c.inverse() * T_w_c);
+    }
+
+    pKFini->SetPreviousKF(NULL);
+    pKFini->SetNextKF(pKFcur);
+    pKFcur->SetPreviousKF(pKFini);
 
     pKFini->ComputeBoW();
     pKFcur->ComputeBoW();
@@ -931,7 +990,6 @@ bool Tracking::TrackLocalMap()
 {
     // We have an estimation of the camera pose and some map points tracked in the frame.
     // We retrieve the local map and try to find matches to points in the local map.
-
     UpdateLocalMap();
 
     SearchLocalPoints();
@@ -1062,10 +1120,21 @@ bool Tracking::NeedNewKeyFrame()
 
 void Tracking::CreateNewKeyFrame()
 {
+
+
     if(!mpLocalMapper->SetNotStop(true))
         return;
 
     KeyFrame* pKF = new KeyFrame(mCurrentFrame,mpMap,mpKeyFrameDB);
+
+    if(mpSystem->useOdometry)
+    {
+        g2o::SE3Quat currentOdomPose = mCurrentFrame.GetOdomPose();
+        pKF->SetOdomPose(mO_w_c.inverse() * currentOdomPose);
+    }
+
+    pKF->SetPreviousKF(mpLastKeyFrame);
+    mpLastKeyFrame->SetNextKF(pKF);
 
     mpReferenceKF = pKF;
     mCurrentFrame.mpReferenceKF = pKF;
@@ -1491,6 +1560,7 @@ bool Tracking::Relocalization()
 
     if(!bMatch)
     {
+        mCurrentFrame.mTcw = cv::Mat::zeros(0, 0, CV_32F); // set mTcw back to empty if relocation is failed
         return false;
     }
     else
@@ -1509,7 +1579,9 @@ void Tracking::Reset()
     {
         mpViewer->RequestStop();
         while(!mpViewer->isStopped())
-            usleep(3000);
+        {
+            std::this_thread::sleep_for(std::chrono::microseconds(3000));
+        }
     }
 
     // Reset Local Mapping
@@ -1586,7 +1658,6 @@ void Tracking::InformOnlyTracking(const bool &flag)
 {
     mbOnlyTracking = flag;
 }
-
 
 
 } //namespace ORB_SLAM
