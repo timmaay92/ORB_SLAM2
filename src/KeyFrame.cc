@@ -54,6 +54,7 @@ KeyFrame::KeyFrame(Frame &F, Map *pMap, KeyFrameDatabase *pKFDB):
 
     SetPose(F.mTcw);    
     SetOdomPose(F.mTf_w_c);
+    SetPrevNeighbour(true);
 }
 
 void KeyFrame::ComputeBoW()
@@ -587,8 +588,11 @@ void KeyFrame::SetBadFlag()
         mbBad = true;
     }
 
-    mpPreviousKeyFrame->mpNextKeyFrame = mpNextKeyFrame;
-    mpNextKeyFrame->mpPreviousKeyFrame = mpPreviousKeyFrame;
+    if(this->HasPrevNeighbour())
+    {
+        mpPreviousKeyFrame->mpNextKeyFrame = mpNextKeyFrame;
+        mpNextKeyFrame->mpPreviousKeyFrame = mpPreviousKeyFrame;
+    }
 
     mpMap->EraseKeyFrame(this);
     mpKeyFrameDB->erase(this);
@@ -792,6 +796,14 @@ void KeyFrame::serialize(Archive &ar, const unsigned int version)
     // Map Points
     ar & mpMap;
     // don't save mutex
+}
+void KeyFrame::SetPrevNeighbour(bool KFNeighbour)
+{
+    mbKFNeighbour = KFNeighbour;
+}
+bool KeyFrame::HasPrevNeighbour()
+{
+    return mbKFNeighbour;
 }
 template void KeyFrame::serialize(boost::archive::binary_iarchive&, const unsigned int);
 template void KeyFrame::serialize(boost::archive::binary_oarchive&, const unsigned int);

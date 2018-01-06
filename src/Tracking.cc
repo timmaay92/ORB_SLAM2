@@ -1133,8 +1133,14 @@ void Tracking::CreateNewKeyFrame()
         pKF->SetOdomPose(mO_w_c.inverse() * currentOdomPose);
     }
 
-    pKF->SetPreviousKF(mpLastKeyFrame);
-    mpLastKeyFrame->SetNextKF(pKF);
+    if(mpLastKeyFrame==NULL)
+        pKF->SetPrevNeighbour(false);
+
+    if(pKF->HasPrevNeighbour());
+    {
+        pKF->SetPreviousKF(mpLastKeyFrame);
+        mpLastKeyFrame->SetNextKF(pKF);
+    }
 
     mpReferenceKF = pKF;
     mCurrentFrame.mpReferenceKF = pKF;

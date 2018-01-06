@@ -115,6 +115,9 @@ public:
     void SetBadFlag();
     bool isBad();
 
+    //flag if the KF has a previous KeyFrame
+    void SetPrevNeighbour(bool KFNeighbour);
+    bool HasPrevNeighbour();
     // Compute Scene Depth (q=2 median). Used in monocular.
     float ComputeSceneMedianDepth(const int q);
 
@@ -248,6 +251,8 @@ protected:
     bool mbBad;    
 
     float mHalfBaseline; // Only for visualization
+
+    bool mbKFNeighbour;
 
     Map* mpMap;
 

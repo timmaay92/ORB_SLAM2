@@ -199,6 +199,9 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
             KeyFrame* pKF = vpKFs[i];
             if(pKF->isBad())
                 continue;
+            if(!pKF->HasPrevNeighbour())
+                continue;
+
             KeyFrame* pKFprev = pKF->GetPreviousKF();
 
             if(pKFprev)
@@ -723,23 +726,6 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
                 odometry->vertices()[1] = optimizer.vertex(pKFi->mnId);         // to vertex KeyFrame i
 
 
-                // SE3 Frame0_world Frame1_world -> Frame0_framei
-                // TODO make nice function thing
-
-                // Matias "compound" way because some numerical errors occurred.
-//                cv::Mat odomKF0 = Converter::toCvMat(pKF->GetOdomPose());
-//                cv::Mat odomKFi = Converter::toCvMat(pKFi->GetOdomPose());
-//                cv::Mat R0 = odomKF0.rowRange(0,3).colRange(0,3).clone();
-//                cv::Mat Ri = odomKFi.rowRange(0,3).colRange(0,3).clone();
-//                cv::Mat t0 = odomKF0.rowRange(0,3).col(3).clone();
-//                cv::Mat ti = odomKFi.rowRange(0,3).col(3).clone();
-
-//                cv::Mat Ri0 = Ri*R0.inv();
-//                cv::Mat ti0 = Ri*t0 + ti;
-//                cv::Mat Ti0;
-//                Ri0.copyTo(Ti0.rowRange(0,3).colRange(0,3));
-//                ti0.copyTo(Ti0.rowRange(0,3).col(3));
-//                g2o::SE3Quat odomKFiKF = Converter::toSE3Quat(Ti0.clone());
                 g2o::SE3Quat odomKF, odomKFi, odomKFiKF;
                 odomKF = pKF->GetOdomPose();
                 odomKFi = pKFi->GetOdomPose();
