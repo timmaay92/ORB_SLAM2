@@ -116,6 +116,17 @@ long unsigned int Map::GetMaxKFid()
     return mnMaxKFid;
 }
 
+void Map::SetInitialPose(g2o::SE3Quat O_w_c)
+{
+    unique_lock<mutex> lock(mMutexMap);
+    mpO_w_c = O_w_c;
+}
+g2o::SE3Quat Map::GetInitialPose()
+{
+    unique_lock<mutex> lock(mMutexMap);
+    return mpO_w_c;
+}
+
 void Map::clear()
 {
     for(set<MapPoint*>::iterator sit=mspMapPoints.begin(), send=mspMapPoints.end(); sit!=send; sit++)
