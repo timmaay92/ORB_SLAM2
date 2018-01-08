@@ -16,14 +16,12 @@
 // Eigen
 #include <Eigen/Geometry>
 
-
 // own files
 #include "SubscribeHandler.hpp"
 
 // g2o
 #include "Thirdparty/g2o/g2o/types/types_six_dof_expmap.h"
 
-// using namespace Eigen;
 
 
 
@@ -31,14 +29,15 @@ int main(int argc, char * argv[]){
 	// initialize ROS. Allows for name remapping (something:/= "somethingelse")
 	// in the command line.
     // Listener is the name of the node written here
-    ros::init(argc, argv, "MaquiOdom");
+    ros::init(argc, argv, "ORB Slam");
 
     // NodeHandle is the main acces point to communications with the ROS system.
     ros::NodeHandle NodeHandler;
 
     // buffer for the transform messages
     tf::TransformListener TfListener;
-    SubscribeHandler maquiHandler(argv[1], argv[2], &NodeHandler, &TfListener);
+    tf::TransformBroadcaster TfBroadcaster;
+    SubscribeHandler maquiHandler(argv[1], argv[2], &NodeHandler, &TfListener, &TfBroadcaster);
 
     if(argc != 3)
     {

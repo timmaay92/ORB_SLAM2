@@ -80,10 +80,10 @@ Initializer.UseOdometry: 1
 # ROS Settings
 #--------------------------------------------------------------------------------------------
 
-Topic.Camera: "/maqui/camera/front/image_raw"
-Topic.CameraFrame: "/CameraTop_optical_frame"
-# Topic.Camera: "/maqui/camera/bottom/image_raw"
-# Topic.CameraFrame: "/CameraBottom_optical_frame"
+#Topic.Camera: "/maqui/camera/front/image_raw"
+#Topic.CameraFrame: "/CameraTop_optical_frame"
+ Topic.Camera: "/maqui/camera/bottom/image_raw"
+ Topic.CameraFrame: "/CameraBottom_optical_frame"
 Topic.WorldFrame: "/map"
 Topic.TF: "tf"
 
