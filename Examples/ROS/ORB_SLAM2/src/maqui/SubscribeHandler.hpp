@@ -44,8 +44,10 @@ public:
                      const string &strSettingsFile, ros::NodeHandle *pNodeHandler,
                      tf::TransformListener *pTFlistener, tf::TransformBroadcaster *pTFbroadcaster);
 
-    // variables
-    tf::StampedTransform tfT_w_c;
+    // transform world and camera with grabbed image
+    tf::StampedTransform T_w_c;
+    // transform between base and camera with image
+    tf::StampedTransform T_b_c;
     cv::Mat cvT_w_c;
     cv_bridge::CvImageConstPtr cv_ptr;
     cv::Mat Tcw;
@@ -56,11 +58,15 @@ public:
 private:
     // methods
     void GrabImage(const sensor_msgs::ImageConstPtr &msg);
+    void Publish_Orientation(cv::Mat Tcw, tf::StampedTransform T_w_c, tf::StampedTransform T_b_c);
+
+    cv::Mat CameraToBaseFrame(cv::Mat Tcw, tf::StampedTransform T_b_c);
     cv::Mat tfToMat(const tf::StampedTransform& tfT);
     Eigen::Matrix<double,3,3> toMatrix3d(const cv::Mat &cvMat3);
     std::vector<float> toQuaternion(const Eigen::Matrix<double, 3, 3> &M);
     std::vector<float> Normalize(std::vector<float> vect);
-    void Publish_Orientation(cv::Mat Tcw, tf::StampedTransform tfT_w_c);
+    g2o::SE3Quat toSE3Quat(const cv::Mat &cvT);
+    cv::Mat toCvMat(const g2o::SE3Quat &SE3);
 
     // ROS
     ros::Subscriber subImage;
@@ -78,6 +84,7 @@ private:
     std::string cameraFrameTopic;
     std::string worldFrameTopic;
     std::string broadCastTopic;
+    std::string baseFrameTopic;
 
     // flags
     bool mbReferenceWorldFrame;

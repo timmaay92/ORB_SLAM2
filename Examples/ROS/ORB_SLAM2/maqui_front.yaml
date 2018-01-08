@@ -86,5 +86,6 @@ Topic.CameraFrame: "/CameraTop_optical_frame"
 # Topic.CameraFrame: "/CameraBottom_optical_frame"
 Topic.WorldFrame: "/map"
 Topic.TF: "tf"
+Topic.BaseFrame: "/base_link"
 
 Map.mapfile: map.bin

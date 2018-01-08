@@ -6,9 +6,11 @@ argument3="Examples/ROS/ORB_SLAM2/maqui_front.yaml"
 
 if [ "$1" == gdb ]; then
    gdb --args Examples/ROS/ORB_SLAM2/Maqui ${argument2} ${argument3}
+else
+rosrun "ORB_SLAM2" ${argument1} ${argument2} ${argument3}
 fi
 
-rosrun "ORB_SLAM2" ${argument1} ${argument2} ${argument3}
+
 
 # using gdb
 
