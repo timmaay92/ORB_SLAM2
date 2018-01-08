@@ -1134,10 +1134,14 @@ void Tracking::CreateNewKeyFrame()
     }
 
     if(mpLastKeyFrame==NULL)
-        pKF->SetPrevNeighbour(false);
-
-    if(pKF->HasPrevNeighbour());
     {
+        std::cout << "no previous KF, RED ALERT" << std::endl;
+        pKF->SetPrevNeighbour(false);
+    }
+
+    if(pKF->HasPrevNeighbour())
+    {
+        std::cout << "previous neighbour present, adding" << std::endl;
         pKF->SetPreviousKF(mpLastKeyFrame);
         mpLastKeyFrame->SetNextKF(pKF);
     }
