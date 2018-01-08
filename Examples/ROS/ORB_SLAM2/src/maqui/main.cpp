@@ -29,7 +29,7 @@ int main(int argc, char * argv[]){
 	// initialize ROS. Allows for name remapping (something:/= "somethingelse")
 	// in the command line.
     // Listener is the name of the node written here
-    ros::init(argc, argv, "ORB Slam");
+    ros::init(argc, argv, "ORB_Slam");
 
     // NodeHandle is the main acces point to communications with the ROS system.
     ros::NodeHandle NodeHandler;
