@@ -585,6 +585,7 @@ void Tracking::StereoInitialization()
 
 void Tracking::MonocularInitialization()
 {
+    std::cout << "INITIALIZING< WATCH OUT! " << std::endl;
 
     if(!mpInitializer)
     {
@@ -785,7 +786,6 @@ void Tracking::CheckReplacedInLastFrame()
         }
     }
 }
-
 
 bool Tracking::TrackReferenceKeyFrame()
 {
@@ -1000,7 +1000,6 @@ bool Tracking::TrackLocalMap()
     else
         return true;
 }
-
 
 bool Tracking::NeedNewKeyFrame()
 {
