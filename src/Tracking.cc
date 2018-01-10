@@ -295,6 +295,14 @@ cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp,
 
 void Tracking::Track()
 {
+
+    if(MapReloaded)
+    {
+//        SetLastKF();
+        mState = LOST;
+        MapReloaded = false;
+    }
+
 //    if(mState==NO_IMAGES_YET)
 //    {
 //        mState = NOT_INITIALIZED;
@@ -437,12 +445,6 @@ void Tracking::Track()
         // If tracking were good, check if we insert a keyframe
         if(bOK)
         {
-            if(useOdometry)
-            {
-
-                // **** TODO update ****
-
-            }
             // Update motion model
             if(!mLastFrame.mTcw.empty())
             {
@@ -476,6 +478,7 @@ void Tracking::Track()
             mlpTemporalPoints.clear();
 
             // Check if we need to insert a new keyframe
+            // Always false in localization mode
             if(NeedNewKeyFrame())
                 CreateNewKeyFrame();
 
@@ -501,11 +504,19 @@ void Tracking::Track()
             }
         }
 
-        if(!mCurrentFrame.mpReferenceKF)
-            mCurrentFrame.mpReferenceKF = mpReferenceKF;
 
+        if(!mCurrentFrame.mpReferenceKF)
+        {
+            if(!mpReferenceKF)
+            {
+                mpReferenceKF = mpLastKeyFrame;
+            }
+            mCurrentFrame.mpReferenceKF = mpReferenceKF;
+        }
         mLastFrame = Frame(mCurrentFrame);
     }
+
+
 
     // Store frame pose information to retrieve the complete camera trajectory afterwards.
     if(!mCurrentFrame.mTcw.empty())
@@ -965,6 +976,8 @@ bool Tracking::TrackLocalMap()
     // We have an estimation of the camera pose and some map points tracked in the frame.
     // We retrieve the local map and try to find matches to points in the local map.
 
+    UpdateLocalMap();
+
     SearchLocalPoints();
 
     // Optimize Pose
@@ -1017,6 +1030,14 @@ void Tracking::CreateNewKeyFrame()
 
    return;
 }
+
+//void Tracking::SetLastKF()
+//{
+//cv::Mat TcwF = mCurrentFrame.mTcw;
+//vector<KeyFrame*> AllKF = GetAllKeyFrame();
+//Eigen::Matrix<double,3,1> v_frame;
+//v_frame = Converter::toVector3d(mTcw.rowRange(0,3).col(3).clone());
+//}
 
 void Tracking::SearchLocalPoints()
 {

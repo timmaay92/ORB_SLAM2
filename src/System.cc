@@ -118,6 +118,8 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
     //(it will live in the main thread of execution, the one that called this constructor)
     mpTracker = new Tracking(this, mpVocabulary,
                              mpMap, mpKeyFrameDatabase, strSettingsFile, mSensor, bReuseMap);
+    if(bReuseMap)
+        mpTracker->MapReloaded= true;
 
 
     //Initialize the Local Mapping thread and launch

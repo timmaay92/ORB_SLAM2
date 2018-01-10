@@ -115,6 +115,7 @@ public:
 
     // True if local mapping is deactivated and we are performing only localization
     bool mbOnlyTracking;
+    bool MapReloaded;
 
     void Reset();
 
@@ -148,6 +149,7 @@ protected:
 
     bool NeedNewKeyFrame();
     void CreateNewKeyFrame();
+//    void SetLastKF();
 
     // In case of performing only localization, this flag is true when there are no matches to
     // points in the map. Still tracking will continue if there are enough matches with temporal points.
