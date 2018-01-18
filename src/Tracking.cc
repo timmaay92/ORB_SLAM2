@@ -682,16 +682,13 @@ void Tracking::CreateInitialMapMonocular()
     KeyFrame* pKFini = new KeyFrame(mInitialFrame,mpMap,mpKeyFrameDB);
     KeyFrame* pKFcur = new KeyFrame(mCurrentFrame,mpMap,mpKeyFrameDB);
 
-    mInitialFrame.EvolvedInKF(pKFini);
-    mCurrentFrame.EvolvedInKF(pKFcur);
-
     g2o::SE3Quat T_wm_wo = mInitialFrame.GetOdomPose();
 
 
     // set the world orb frame (wo) wrt world maqui frame (wm) in the map
     mpMap->SetInitialPose(T_wm_wo);
 
-    std::cout << "T_wm_wo = " << Converter::toCvMat(T_wm_wo) << std::endl;
+//    std::cout << "T_wm_wo = " << Converter::toCvMat(T_wm_wo) << std::endl;
     pKFini->SetPreviousKF(NULL);
     pKFini->SetNextKF(pKFcur);
     pKFcur->SetPreviousKF(pKFini);
@@ -1122,7 +1119,6 @@ void Tracking::CreateNewKeyFrame()
         return;
 
     KeyFrame* pKF = new KeyFrame(mCurrentFrame,mpMap,mpKeyFrameDB);
-    mCurrentFrame.EvolvedInKF(pKF);
 
     if(mpLastKeyFrame==NULL)
     {

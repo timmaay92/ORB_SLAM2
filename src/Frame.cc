@@ -57,7 +57,6 @@ Frame::Frame(const Frame &frame)
     if(!frame.mTcw.empty())
         SetPose(frame.mTcw);
 
-//     SetOdomPose(frame.mTf_c_w);
 }
 
 
@@ -230,7 +229,6 @@ Frame::Frame(const cv::Mat &imGray, const double &timeStamp, ORBextractor* extra
 
     AssignFeaturesToGrid();
 
-//    mTf_c_w = cv::Mat::eye(4, 4, CV_32F);
 
 }
 
