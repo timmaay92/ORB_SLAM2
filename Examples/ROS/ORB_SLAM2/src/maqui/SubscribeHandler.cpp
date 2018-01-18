@@ -114,7 +114,6 @@ void SubscribeHandler::Publish_Orientation(cv::Mat Tcw, tf::StampedTransform T_w
 
 
     mpTFbroadcaster->sendTransform(tf::StampedTransform(TForientation, T_w_c.stamp_, worldFrameTopic, broadCastTopic));
-//    mpTFbroadcaster->sendTransform(tf::StampedTransform(TForientation, T_w_c.stamp_, broadCastTopic, worldFrameTopic));
 
     maqui_orientation.publish(orientation_msg);
 

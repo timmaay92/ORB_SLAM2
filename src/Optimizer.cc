@@ -188,8 +188,7 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
 
     // Set odometry measurements
     // Iterated from the first keyframe all the way to the KF which has no pointer
-    // to a next KF (and thus is the last). This is forward iteration, thus relative
-    // transformation calculation is other way around.
+    // to a next KF (and thus is the last).
 
     if(useOdometry)
     {
@@ -701,20 +700,13 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
     }
 
     // Set odometry measurements
-    // First iteration: edges are from local keyframe pkF to all other
-    // keyframes in the covisibility graph (thus that are optimized.
-    // Possible other implementation:
-    // the odometry between all keyframes to be optimized is taken.
+    // take edges between all keyframes in the covisibility graph, thus that are not fixed.
     if(useOdometry)
     {
         for(list<KeyFrame*>::iterator lit=lLocalKeyFrames.begin(), lend=lLocalKeyFrames.end(); lit!=lend; lit++)
         {
             KeyFrame* pKFi = *lit;
-
-            // skip edge that is pKF and we dont want edge between pKF and itself.
-            if (pKFi == pKF)
-                continue;
-
+            KeyFrame* pKFprev = pKFi->GetPreviousKF();
             if(pKFi->isBad())
                 continue;
 
@@ -722,13 +714,15 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
             if(pKFi->mnId == pKF->mnBAFixedForKF)
                 continue;
 
+            if(pKFprev)
+            {
                 g2o::EdgeSE3Odometry* odometry = new g2o::EdgeSE3Odometry();
-                odometry->vertices()[0] = optimizer.vertex(pKF->mnId);  // from vertex KeyFrame 0
-                odometry->vertices()[1] = optimizer.vertex(pKFi->mnId);         // to vertex KeyFrame i
+                odometry->vertices()[0] = optimizer.vertex(pKFprev->mnId);  // from previous KF
+                odometry->vertices()[1] = optimizer.vertex(pKFi->mnId);         // to KF
 
 
                 g2o::SE3Quat odomKF, odomKFi, odomKFiKF;
-                odomKF = pKF->GetOdomPose();
+                odomKF = pKFprev->GetOdomPose();
                 odomKFi = pKFi->GetOdomPose();
                 odomKFiKF = odomKFi*odomKF.inverse();
 
@@ -741,6 +735,7 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
                 rk->setDelta(thHuber6D);
 
                 optimizer.addEdge(odometry);
+            }
         }
     }
 
