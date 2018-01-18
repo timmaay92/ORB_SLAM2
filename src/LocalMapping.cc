@@ -814,10 +814,7 @@ float LocalMapping::ScaleRecovery()
 
             cv::Mat oTwc = Converter::toCvMat(pKF->GetOdomPose());
             cv::Mat oTwc_prev = Converter::toCvMat(pKFprev->GetOdomPose());
-
-//            cv::Mat temp =oTwc.inv() * oTwc_prev;
             cv::Mat temp =oTwc_prev.inv() * oTwc;
-
             cv::Mat doTwc = temp.rowRange(0,3).col(3).clone();
 
 //             std::cout << "Camera orb frame (Tcw) = \n" << pKF->GetPose() << std::endl;
