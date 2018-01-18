@@ -25,13 +25,19 @@
 
 #include<mutex>
 
+
 namespace ORB_SLAM2
 {
 
-LocalMapping::LocalMapping(Map *pMap, const float bMonocular):
+LocalMapping::LocalMapping(Map *pMap, const string &strSettingPath,  const float bMonocular):
     mbMonocular(bMonocular), mbResetRequested(false), mbFinishRequested(false), mbFinished(true), mpMap(pMap),
     mbAbortBA(false), mbStopped(false), mbStopRequested(false), mbNotStop(false), mbAcceptKeyFrames(true)
 {
+    // Load camera parameters from settings file
+    cv::FileStorage fsSettings(strSettingPath, cv::FileStorage::READ);
+    float temp = fsSettings["Initializer.KeyFrames"];
+    NumOfKeyFrames = (unsigned long) temp;
+    useOdometry = fsSettings["Initializer.UseOdometry"];
 }
 
 void LocalMapping::SetLoopCloser(LoopClosing* pLoopCloser)
@@ -46,7 +52,6 @@ void LocalMapping::SetTracker(Tracking *pTracker)
 
 void LocalMapping::Run()
 {
-
     mbFinished = false;
 
     while(1)
@@ -76,10 +81,21 @@ void LocalMapping::Run()
 
             if(!CheckNewKeyFrames() && !stopRequested())
             {
-                // Local BA
-                if(mpMap->KeyFramesInMap()>2)
-                    Optimizer::LocalBundleAdjustment(mpCurrentKeyFrame,&mbAbortBA, mpMap);
 
+                // Local BA
+                if(useOdometry && mpMap->KeyFramesInMap()>NumOfKeyFrames && !mpMap->IsMapScaled)
+                {
+                    MapScaling();
+                    Optimizer::GlobalBundleAdjustemnt(mpMap,5);
+                }
+                if(mpMap->KeyFramesInMap()>2)
+                {
+                    if(useOdometry && mpMap->IsMapScaled)
+                        Optimizer::LocalBundleAdjustment(mpCurrentKeyFrame,&mbAbortBA, mpMap, true);
+
+                    else if(!useOdometry)
+                        Optimizer::LocalBundleAdjustment(mpCurrentKeyFrame,&mbAbortBA, mpMap, false);
+                }
                 // Check redundant local Keyframes
                 KeyFrameCulling();
             }
@@ -91,7 +107,7 @@ void LocalMapping::Run()
             // Safe area to stop
             while(isStopped() && !CheckFinish())
             {
-                usleep(3000);
+                std::this_thread::sleep_for(std::chrono::microseconds(3000));
             }
             if(CheckFinish())
                 break;
@@ -105,7 +121,7 @@ void LocalMapping::Run()
         if(CheckFinish())
             break;
 
-        usleep(3000);
+        std::this_thread::sleep_for(std::chrono::microseconds(3000));
     }
 
     SetFinish();
@@ -716,7 +732,7 @@ void LocalMapping::RequestReset()
             if(!mbResetRequested)
                 break;
         }
-        usleep(3000);
+        std::this_thread::sleep_for(std::chrono::microseconds(3000));
     }
 }
 
@@ -757,4 +773,73 @@ bool LocalMapping::isFinished()
     return mbFinished;
 }
 
+void LocalMapping::MapScaling()
+{
+    float scale = ScaleRecovery();
+    std::vector<KeyFrame*> UnscaledKF = mpMap->GetAllKeyFrames();
+    std::vector<MapPoint*> UnscaledMP = mpMap->GetAllMapPoints();
+
+    for(vector<KeyFrame*>::const_iterator itKF = UnscaledKF.begin(), itEndKF = UnscaledKF.end(); itKF!=itEndKF; itKF++)
+    {
+        KeyFrame* pKF = *itKF;
+        pKF->UpdateTranslation(scale);
+    }
+    for(vector<MapPoint*>::const_iterator itMP = UnscaledMP.begin(), itEndMP = UnscaledMP.end(); itMP!=itEndMP; itMP++)
+    {
+        MapPoint* pMP = *itMP;
+        pMP->UpdateWorldPos(scale);
+    }
+
+    mpMap->IsMapScaled = true;
+}
+
+
+float LocalMapping::ScaleRecovery()
+{
+    cout <<"Scale obtaining started " <<endl;
+
+    cv::Mat A, B, scale;
+
+    vector<KeyFrame*> MapKeyFrames = mpMap->GetAllKeyFrames();
+    for(vector<KeyFrame*>::const_iterator itKF=MapKeyFrames.begin(), itEndKF=MapKeyFrames.end(); itKF!=itEndKF; itKF++)
+    {
+        KeyFrame* pKF = *itKF;
+        KeyFrame* pKFprev = pKF->GetPreviousKF();
+        if(pKFprev)
+        {
+            // Camera pose & odometry pose
+            cv::Mat Cw = pKF->GetCameraCenter();
+            cv::Mat Cw_prev = pKFprev->GetCameraCenter();
+            cv::Mat dCw = Cw.clone() - Cw_prev.clone();
+
+            cv::Mat oTwc = Converter::toCvMat(pKF->GetOdomPose());
+            cv::Mat oTwc_prev = Converter::toCvMat(pKFprev->GetOdomPose());
+
+//            cv::Mat temp =oTwc.inv() * oTwc_prev;
+            cv::Mat temp =oTwc_prev.inv() * oTwc;
+
+            cv::Mat doTwc = temp.rowRange(0,3).col(3).clone();
+
+//             std::cout << "Camera orb frame (Tcw) = \n" << pKF->GetPose() << std::endl;
+//             std::cout << "prev Camera orb frame (Tcw) = \n" << pKFprev->GetPose() << std::endl;
+//             std::cout << " odometry frame (oTwc) = \n" << oTwc << std::endl;
+//             std::cout << "prev odometry frame (oTwc) = \n" << oTwc_prev << std::endl;
+
+            // A = orb frames
+            // B = odometry frames
+            A.push_back(dCw);
+            B.push_back(doTwc);
+        }
+    }
+
+
+    // opencv method
+    A.convertTo(A, CV_64F);
+    B.convertTo(B, CV_64F);
+    cv::solve(A, B, scale, cv::DECOMP_SVD);
+
+    std::cout <<"Scale obtained as " << scale.at<double>(0) <<std::endl;
+    float s = (float) scale.at<double>(0);
+    return s;
+}
 } //namespace ORB_SLAM
