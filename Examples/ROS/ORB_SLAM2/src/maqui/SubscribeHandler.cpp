@@ -65,31 +65,27 @@ void SubscribeHandler::GrabImage(const sensor_msgs::ImageConstPtr& msg)
 
     cvT_w_c = tfToMat(T_w_c);
     mpSLAM->SetOdomPose(cvT_w_c);
-    Tcw = mpSLAM->TrackMonocular(cv_ptr->image, cv_ptr->header.stamp.toSec());
+    Twc = mpSLAM->TrackMonocular(cv_ptr->image, cv_ptr->header.stamp.toSec());
 
-    if(!Tcw.empty())
+    if(!Twc.empty())
     {
-        SubscribeHandler::Publish_Orientation(Tcw.clone(), T_w_c, T_b_c);
+        SubscribeHandler::Publish_Orientation(Twc.clone(), T_w_c);
     }
 }
 
 
 
-void SubscribeHandler::Publish_Orientation(cv::Mat Tcw, tf::StampedTransform T_w_c , tf::StampedTransform T_b_c)
+void SubscribeHandler::Publish_Orientation(cv::Mat Tcw, tf::StampedTransform T_w_c)
 {
-    cv::Mat Tbw;
-//    if(useBaseFrame)
-//        Tbw = CameraToBaseFrame(Tcw, T_b_c);
-//    else // publish in camera frame
-    Tbw = Tcw.clone();
 
-    Eigen::Matrix<double, 3, 3> Tbw_eig = SubscribeHandler::toMatrix3d(Tbw.clone());
-    std::vector<float> q = SubscribeHandler::toQuaternion(Tbw_eig);
+
+    Eigen::Matrix<double, 3, 3> Tcw_eig = SubscribeHandler::toMatrix3d(Tcw.clone());
+    std::vector<float> q = SubscribeHandler::toQuaternion(Tcw_eig);
 
     // TF fill broadcast message
     tf::Transform TForientation;
 
-    TForientation.setOrigin(tf::Vector3(Tbw.at<float>(0,3), Tbw.at<float>(1,3),Tbw.at<float>(2,3)));
+    TForientation.setOrigin(tf::Vector3(Tcw.at<float>(0,3), Tcw.at<float>(1,3),Tcw.at<float>(2,3)));
 
     tf::Quaternion quatTF;
     quatTF.setX(q[0]);
@@ -103,9 +99,9 @@ void SubscribeHandler::Publish_Orientation(cv::Mat Tcw, tf::StampedTransform T_w
 
     orientation_msg.header.frame_id = "CameraTop_optical_frame";
     orientation_msg.header.stamp.sec = T_w_c.stamp_.sec;
-    orientation_msg.pose.position.x = Tbw.at<float>(0,3);
-    orientation_msg.pose.position.y = Tbw.at<float>(1,3);
-    orientation_msg.pose.position.z = Tbw.at<float>(2,3);
+    orientation_msg.pose.position.x = Tcw.at<float>(0,3);
+    orientation_msg.pose.position.y = Tcw.at<float>(1,3);
+    orientation_msg.pose.position.z = Tcw.at<float>(2,3);
     orientation_msg.pose.orientation.x = q[0];
     orientation_msg.pose.orientation.y = q[1];
     orientation_msg.pose.orientation.z = q[2];
@@ -118,16 +114,6 @@ void SubscribeHandler::Publish_Orientation(cv::Mat Tcw, tf::StampedTransform T_w
     maqui_orientation.publish(orientation_msg);
 
 }
-
-cv::Mat SubscribeHandler::CameraToBaseFrame(cv::Mat Tcw, tf::StampedTransform T_b_c)
-{
-    cv::Mat temp = SubscribeHandler::tfToMat(T_b_c);
-    g2o::SE3Quat Temp_cw = SubscribeHandler::toSE3Quat(Tcw);
-    g2o::SE3Quat Temp_bc = SubscribeHandler::toSE3Quat(temp);
-    g2o::SE3Quat T_b_w = Temp_bc * Temp_cw;
-    return SubscribeHandler::toCvMat(T_b_w);
-}
-
 
 
 cv::Mat SubscribeHandler::tfToMat(const tf::StampedTransform& tfT)

@@ -50,7 +50,7 @@ public:
     tf::StampedTransform T_b_c;
     cv::Mat cvT_w_c;
     cv_bridge::CvImageConstPtr cv_ptr;
-    cv::Mat Tcw;
+    cv::Mat Twc;
 
     // methods
 	void Shutdown();
@@ -58,9 +58,8 @@ public:
 private:
     // methods
     void GrabImage(const sensor_msgs::ImageConstPtr &msg);
-    void Publish_Orientation(cv::Mat Tcw, tf::StampedTransform T_w_c, tf::StampedTransform T_b_c);
+    void Publish_Orientation(cv::Mat Tcw, tf::StampedTransform T_w_c);
 
-    cv::Mat CameraToBaseFrame(cv::Mat Tcw, tf::StampedTransform T_b_c);
     cv::Mat tfToMat(const tf::StampedTransform& tfT);
     Eigen::Matrix<double,3,3> toMatrix3d(const cv::Mat &cvMat3);
     std::vector<float> toQuaternion(const Eigen::Matrix<double, 3, 3> &M);
