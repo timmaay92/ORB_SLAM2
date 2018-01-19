@@ -188,7 +188,7 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
 
     // Set odometry measurements
     // Iterated from the first keyframe all the way to the KF which has no pointer
-    // to a next KF (and thus is the last).
+    // to a previous KF.
 
     if(useOdometry)
     {
@@ -196,12 +196,20 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
         for(size_t i=0; i<vpKFs.size(); i++)
         {
             KeyFrame* pKF = vpKFs[i];
-            if(pKF->isBad())
+            KeyFrame* pKFprev = pKF->GetPreviousKF();
+
+            cv::Mat checkmat1 = Converter::toCvMat(pKFprev->GetOdomPose());
+            cv::Mat checkmat2 = Converter::toCvMat(pKF->GetOdomPose());
+
+            if(checkmat1.empty() || checkmat2.empty())
                 continue;
+
+            if(pKF->isBad() || pKFprev->isBad())
+                continue;
+
             if(!pKF->HasPrevNeighbour())
                 continue;
 
-            KeyFrame* pKFprev = pKF->GetPreviousKF();
 
             if(pKFprev)
             {
@@ -542,13 +550,14 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
             KeyFrame* pKFi = mit->first;
 
             if(pKFi->mnBALocalForKF!=pKF->mnId && pKFi->mnBAFixedForKF!=pKF->mnId)
-            {                
+            {
                 pKFi->mnBAFixedForKF=pKF->mnId;
                 if(!pKFi->isBad())
                     lFixedCameras.push_back(pKFi);
             }
         }
     }
+
 
     // Setup optimizer
     g2o::SparseOptimizer optimizer;
@@ -565,6 +574,24 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
         optimizer.setForceStopFlag(pbStopFlag);
 
     unsigned long maxKFid = 0;
+
+    // Check whether all previous KF's have a vertex
+    for(list<KeyFrame*>::iterator lit=lLocalKeyFrames.begin(), lend=lLocalKeyFrames.end(); lit!=lend; lit++)
+    {
+        KeyFrame* pKFlist = *lit;
+        KeyFrame* pKFprevs = pKFlist->GetPreviousKF();
+        if (!pKFprevs->mnBALocalForKF == pKF->mnId && !pKFprevs->mnBAFixedForKF == pKF->mnId)
+        {
+            g2o::VertexSE3Expmap * vSE3 = new g2o::VertexSE3Expmap();
+            vSE3->setEstimate(Converter::toSE3Quat(pKFprevs->GetPose()));
+            vSE3->setId(pKFprevs->mnId);
+            vSE3->setFixed(true);
+            optimizer.addVertex(vSE3);
+            if(pKFprevs->mnId>maxKFid)
+                maxKFid=pKFprevs->mnId;
+        }
+    }
+
 
     // Set Local KeyFrame vertices
     for(list<KeyFrame*>::iterator lit=lLocalKeyFrames.begin(), lend=lLocalKeyFrames.end(); lit!=lend; lit++)
@@ -709,40 +736,49 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
         {
             KeyFrame* pKFi = *lit;
             KeyFrame* pKFprev = pKFi->GetPreviousKF();
-            if(pKFi->isBad())
+
+
+            cv::Mat checkmat1 = Converter::toCvMat(pKFprev->GetOdomPose());
+            cv::Mat checkmat2 = Converter::toCvMat(pKFi->GetOdomPose());
+
+            if(checkmat1.empty() || checkmat2.empty())
+                continue;
+
+            if(pKFi->isBad() || pKFprev->isBad())
                 continue;
 
             // skip if this is a fixed node
             if(pKFi->mnId == pKF->mnBAFixedForKF)
                 continue;
 
-            if(pKFprev)
-            {
-                g2o::EdgeSE3Odometry* odometry = new g2o::EdgeSE3Odometry();
-                odometry->vertices()[0] = optimizer.vertex(pKFprev->mnId);  // from previous KF
-                odometry->vertices()[1] = optimizer.vertex(pKFi->mnId);         // to KF
+            if(!pKFprev)
+                continue;
 
 
-                g2o::SE3Quat odomKFp, odomKFi, odomKFpKFi;
-                odomKFp = pKFprev->GetOdomPose();
-                odomKFi = pKFi->GetOdomPose();
-//                odomKFiKF = odomKFi*odomKF.inverse();
-                odomKFpKFi = odomKFp.inverse() * odomKFi;
-//                if(!odomKFpKFi)
-//                    continue;
+            g2o::EdgeSE3Odometry* odometry = new g2o::EdgeSE3Odometry();
+            odometry->vertices()[0] = optimizer.vertex(pKFprev->mnId);  // from previous KF
+            odometry->vertices()[1] = optimizer.vertex(pKFi->mnId);         // to KF
 
-                odometry->setMeasurement(odomKFpKFi);
+
+            g2o::SE3Quat odomKFp, odomKFi, odomKFpKFi;
+            odomKFp = pKFprev->GetOdomPose();
+            odomKFi = pKFi->GetOdomPose();
+            odomKFpKFi = odomKFp.inverse() * odomKFi;
+
+
+            odometry->setMeasurement(odomKFpKFi);
 
                 // weight matrix
-                cv::Mat temp = cv::Mat::eye(6,6,CV_32F);
-                odometry->setInformation(Converter::toMatrix6d(temp.clone()));
+            cv::Mat temp = cv::Mat::eye(6,6,CV_32F);
+            odometry->setInformation(Converter::toMatrix6d(temp.clone()));
 
-                g2o::RobustKernelHuber* rk = new g2o::RobustKernelHuber;
-                odometry->setRobustKernel(rk);
-                rk->setDelta(thHuber6D);
+            g2o::RobustKernelHuber* rk = new g2o::RobustKernelHuber;
+            odometry->setRobustKernel(rk);
+            rk->setDelta(thHuber6D);
+            std::cout << "Edge odometry matrix at local BA = " <<
+                         odomKFpKFi.to_homogeneous_matrix()    << std::endl;
+            optimizer.addEdge(odometry);
 
-                optimizer.addEdge(odometry);
-            }
         }
     }
 
