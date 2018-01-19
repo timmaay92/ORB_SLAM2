@@ -213,6 +213,8 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
                 odomKF = pKF->GetOdomPose();
                 odomKFp = pKFprev->GetOdomPose();
                 odomKFKFp = odomKFp.inverse() * odomKF;
+//                if(!odomKFKFp)
+//                    continue;
 
                 odometry->setMeasurement(odomKFKFp);
                 cv::Mat temp = cv::Mat::eye(6,6,CV_32F);
@@ -721,12 +723,17 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
                 odometry->vertices()[1] = optimizer.vertex(pKFi->mnId);         // to KF
 
 
-                g2o::SE3Quat odomKF, odomKFi, odomKFiKF;
-                odomKF = pKFprev->GetOdomPose();
+                g2o::SE3Quat odomKFp, odomKFi, odomKFpKFi;
+                odomKFp = pKFprev->GetOdomPose();
                 odomKFi = pKFi->GetOdomPose();
-                odomKFiKF = odomKFi*odomKF.inverse();
+//                odomKFiKF = odomKFi*odomKF.inverse();
+                odomKFpKFi = odomKFp.inverse() * odomKFi;
+//                if(!odomKFpKFi)
+//                    continue;
 
-                odometry->setMeasurement(odomKFiKF);
+                odometry->setMeasurement(odomKFpKFi);
+
+                // weight matrix
                 cv::Mat temp = cv::Mat::eye(6,6,CV_32F);
                 odometry->setInformation(Converter::toMatrix6d(temp.clone()));
 
