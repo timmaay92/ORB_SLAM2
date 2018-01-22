@@ -38,16 +38,18 @@ namespace ORB_SLAM2
 {
 
 
-void Optimizer::GlobalBundleAdjustemnt(Map* pMap, int nIterations, bool* pbStopFlag, const unsigned long nLoopKF, const bool bRobust)
+void Optimizer::GlobalBundleAdjustemnt(Map* pMap, int nIterations, bool* pbStopFlag, const unsigned long nLoopKF, const bool bRobust, bool useOdometry)
 {
     vector<KeyFrame*> vpKFs = pMap->GetAllKeyFrames();
     vector<MapPoint*> vpMP = pMap->GetAllMapPoints();
-    BundleAdjustment(vpKFs,vpMP,nIterations,pbStopFlag, nLoopKF, bRobust);
+
+    BundleAdjustment(vpKFs,vpMP, pMap,nIterations,pbStopFlag, nLoopKF, bRobust, useOdometry);
+
 }
 
 
-void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<MapPoint *> &vpMP,
-                                 int nIterations, bool* pbStopFlag, const unsigned long nLoopKF, const bool bRobust)
+void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<MapPoint *> &vpMP, Map *pMap,
+                                 int nIterations, bool* pbStopFlag, const unsigned long nLoopKF, const bool bRobust, bool useOdometry)
 {
     vector<bool> vbNotIncludedMP;
     vbNotIncludedMP.resize(vpMP.size());
@@ -84,6 +86,7 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
 
     const float thHuber2D = sqrt(5.99);
     const float thHuber3D = sqrt(7.815);
+    const float thHuber6D = sqrt(12.59);
 
     // Set MapPoint vertices
     for(size_t i=0; i<vpMP.size(); i++)
@@ -180,6 +183,48 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
         else
         {
             vbNotIncludedMP[i]=false;
+        }
+    }
+
+    // Set odometry measurements
+    // Iterated from the first keyframe all the way to the KF which has no pointer
+    // to a next KF (and thus is the last). This is forward iteration, thus relative
+    // transformation calculation is other way around. TODO check that
+
+    if(useOdometry)
+    {
+        //Keyframes
+        for(size_t i=0; i<vpKFs.size(); i++)
+        {
+            KeyFrame* pKF = vpKFs[i];
+            if(pKF->isBad())
+                continue;
+            if(!pKF->HasPrevNeighbour())
+                continue;
+
+            KeyFrame* pKFprev = pKF->GetPreviousKF();
+
+            if(pKFprev)
+            {
+                g2o::EdgeSE3Odometry* odometry = new g2o::EdgeSE3Odometry();
+                odometry->vertices()[0] = optimizer.vertex(pKFprev->mnId);  // from vertex KeyFrame 0
+                odometry->vertices()[1] = optimizer.vertex(pKF->mnId); // to vertex KeyFrame i
+
+                g2o::SE3Quat odomKFp, odomKF, odomKFKFp;
+                odomKF = pKF->GetOdomPose();
+                odomKFp = pKFprev->GetOdomPose();
+                odomKFKFp = odomKFp.inverse() * odomKF;
+
+                odometry->setMeasurement(odomKFKFp);
+                cv::Mat temp = cv::Mat::eye(6,6,CV_32F);
+                odometry->setInformation(Converter::toMatrix6d(temp.clone()));
+
+                g2o::RobustKernelHuber* rk = new g2o::RobustKernelHuber;
+                odometry->setRobustKernel(rk);
+                rk->setDelta(thHuber6D);
+
+                optimizer.addEdge(odometry);
+            }
         }
     }
 
@@ -450,7 +495,7 @@ int Optimizer::PoseOptimization(Frame *pFrame)
     return nInitialCorrespondences-nBad;
 }
 
-void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap)
+void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap, bool useOdometry)
 {    
     // Local KeyFrames: First Breath Search from Current Keyframe
     list<KeyFrame*> lLocalKeyFrames;
@@ -568,7 +613,9 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
 
     const float thHuberMono = sqrt(5.991);
     const float thHuberStereo = sqrt(7.815);
+    const float thHuber6D = sqrt(12.59);
 
+    // add map points
     for(list<MapPoint*>::iterator lit=lLocalMapPoints.begin(), lend=lLocalMapPoints.end(); lit!=lend; lit++)
     {
         MapPoint* pMP = *lit;
@@ -649,6 +696,50 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
                     vpMapPointEdgeStereo.push_back(pMP);
                 }
             }
+        }
+    }
+
+    // Set odometry measurements
+    // First iteration: edges are from local keyframe pkF to all other
+    // keyframes in the covisibility graph (thus that are optimized.
+    // Possible other implementation:
+    // the odometry between all keyframes to be optimized is taken.
+    if(useOdometry)
+    {
+        for(list<KeyFrame*>::iterator lit=lLocalKeyFrames.begin(), lend=lLocalKeyFrames.end(); lit!=lend; lit++)
+        {
+            KeyFrame* pKFi = *lit;
+
+            // skip edge that is pKF and we dont want edge between pKF and itself.
+            if (pKFi == pKF)
+                continue;
+
+            if(pKFi->isBad())
+                continue;
+
+            // skip if this is a fixed node
+            if(pKFi->mnId == pKF->mnBAFixedForKF)
+                continue;
+
+                g2o::EdgeSE3Odometry* odometry = new g2o::EdgeSE3Odometry();
+                odometry->vertices()[0] = optimizer.vertex(pKF->mnId);  // from vertex KeyFrame 0
+                odometry->vertices()[1] = optimizer.vertex(pKFi->mnId);         // to vertex KeyFrame i
+
+
+                g2o::SE3Quat odomKF, odomKFi, odomKFiKF;
+                odomKF = pKF->GetOdomPose();
+                odomKFi = pKFi->GetOdomPose();
+                odomKFiKF = odomKFi*odomKF.inverse();
+
+                odometry->setMeasurement(odomKFiKF);
+                cv::Mat temp = cv::Mat::eye(6,6,CV_32F);
+                odometry->setInformation(Converter::toMatrix6d(temp.clone()));
+
+                g2o::RobustKernelHuber* rk = new g2o::RobustKernelHuber;
+                odometry->setRobustKernel(rk);
+                rk->setDelta(thHuber6D);
+
+                optimizer.addEdge(odometry);
         }
     }
 
