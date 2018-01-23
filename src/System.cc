@@ -121,8 +121,11 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
     mpTracker = new Tracking(this, mpVocabulary, mpFrameDrawer, mpMapDrawer,
                              mpMap, mpKeyFrameDatabase, strSettingsFile, mSensor, bReuseMap);
 
-    if(bReuseMap)
+    if(bReuseMap) {
         mpTracker->MapReloaded = true;
+//        g2o::SE3Quat T_wo_wm = mpMap->GetInitialPose();
+        //std::cout << "initial map pose" << Converter::toCvMat(T_wo_wm) << std::endl;
+    }
     else
         mpTracker->MapReloaded = false;
 

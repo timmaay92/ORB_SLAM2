@@ -52,7 +52,7 @@ KeyFrame::KeyFrame(Frame &F, Map *pMap, KeyFrameDatabase *pKFDB):
             mGrid[i][j] = F.mGrid[i][j];
     }
 
-    SetPose(F.mTcw);    
+    SetPose(F.mTcw);
     SetOdomPose(F.mTf_w_c);
     SetPrevNeighbour(true);
 }
@@ -202,7 +202,7 @@ void KeyFrame::UpdateBestCovisibles()
     }
 
     mvpOrderedConnectedKeyFrames = vector<KeyFrame*>(lKFs.begin(),lKFs.end());
-    mvOrderedWeights = vector<int>(lWs.begin(), lWs.end());    
+    mvOrderedWeights = vector<int>(lWs.begin(), lWs.end());
 }
 
 set<KeyFrame*> KeyFrame::GetConnectedKeyFrames()
@@ -500,7 +500,7 @@ void KeyFrame::SetErase()
 }
 
 void KeyFrame::SetBadFlag()
-{   
+{
     {
         unique_lock<mutex> lock(mMutexConnections);
         if(mnId==0)
@@ -744,6 +744,21 @@ void KeyFrame::serialize(Archive &ar, const unsigned int version)
     // Tracking related vars
     ar & mnTrackReferenceForFrame & mnFuseTargetForKF;
     // LocalMaping related vars
+    //Tim's pointers
+    std::cout <<"before pointers serialize" << std::endl;
+//    std::cout <<"mpPreviousKeyFrame " << mpPreviousKeyFrame << std::endl;
+//    std::cout <<"mpNextKeyFrame " << mpNextKeyFrame << std::endl;
+    if(mpPreviousKeyFrame) {
+        ar & mpPreviousKeyFrame;
+        std::cout << "ok saving the mpPreviousKeyFrame" << std::endl;
+        std::cout <<"mpPreviousKeyFrame " << mpPreviousKeyFrame << std::endl;
+    }
+    if(mpNextKeyFrame) {
+        ar & mpNextKeyFrame;
+        std::cout << "ok saving the mpNextKeyFrame" << std::endl;
+        std::cout <<"mpNextKeyFrame " << mpNextKeyFrame << std::endl;
+    }
+    std::cout <<"serialization of pointers ok" << std::endl;
     ar & mnBALocalForKF & mnBAFixedForKF;
     // KeyFrameDB related vars
     ar & mnLoopQuery & mnLoopWords & mLoopScore & mnRelocQuery & mnRelocWords & mRelocScore;
@@ -783,10 +798,10 @@ void KeyFrame::serialize(Archive &ar, const unsigned int version)
     }
     // BoW
     ar & mpKeyFrameDB;
-    // mpORBvocabulary restore elsewhere(see SetORBvocab)
+    // mpORBvocabulary restore elsewunique_lock<mutex> lock_connection(mMutexConnections);here(see SetORBvocab)
     {
         // Grid related
-        unique_lock<mutex> lock_connection(mMutexConnections);
+
         ar & mGrid & mConnectedKeyFrameWeights & mvpOrderedConnectedKeyFrames & mvOrderedWeights;
         // Spanning Tree and Loop Edges
         ar & mbFirstConnection & mpParent & mspChildrens & mspLoopEdges;
