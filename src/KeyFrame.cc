@@ -40,7 +40,7 @@ KeyFrame::KeyFrame(Frame &F, Map *pMap, KeyFrameDatabase *pKFDB):
     mvInvLevelSigma2(F.mvInvLevelSigma2), mnMinX(F.mnMinX), mnMinY(F.mnMinY), mnMaxX(F.mnMaxX),
     mnMaxY(F.mnMaxY), mK(F.mK), mvpMapPoints(F.mvpMapPoints), mpKeyFrameDB(pKFDB),
     mpORBvocabulary(F.mpORBvocabulary), mbFirstConnection(true), mpParent(NULL), mbNotErase(false),
-    mbToBeErased(false), mbBad(false), mHalfBaseline(F.mb/2), mpMap(pMap), mpNextKeyFrame(NULL),mpPreviousKeyFrame(NULL)
+    mbToBeErased(false), mbBad(false), mHalfBaseline(F.mb/2), mpMap(pMap), mpNextKeyFrame(nullptr),mpPreviousKeyFrame(nullptr)
 {
     mnId=nNextId++;
 
@@ -748,18 +748,19 @@ void KeyFrame::save(Archive &ar, const unsigned int version) const
     std::cout <<"before pointers serialize" << std::endl;
 //    std::cout <<"mpPreviousKeyFrame " << mpPreviousKeyFrame << std::endl;
 //    std::cout <<"mpNextKeyFrame " << mpNextKeyFrame << std::endl;
-    if(mpPreviousKeyFrame) {
-        ar & mpPreviousKeyFrame;
-        std::cout << "ok saving the mpPreviousKeyFrame" << std::endl;
-        std::cout <<"mpPreviousKeyFrame " << mpPreviousKeyFrame << std::endl;
-    }
-    if(mpNextKeyFrame) {
-        ar & mpNextKeyFrame;
-        std::cout << "ok saving the mpNextKeyFrame" << std::endl;
-        std::cout <<"mpNextKeyFrame " << mpNextKeyFrame << std::endl;
-    }
+    //if(mpPreviousKeyFrame) {
+    //    ar & mpPreviousKeyFrame;
+     //   std::cout << "ok saving the mpPreviousKeyFrame" << std::endl;
+     //   std::cout <<"mpPreviousKeyFrame " << mpPreviousKeyFrame << std::endl;
+    //}
+    //if(mpNextKeyFrame) {
+    //    ar & mpNextKeyFrame;
+     //   std::cout << "ok saving the mpNextKeyFrame" << std::endl;
+    //    std::cout <<"mpNextKeyFrame " << mpNextKeyFrame << std::endl;
+    //}
     std::cout <<"serialization of pointers ok" << std::endl;
     ar & mnBALocalForKF & mnBAFixedForKF;
+    std::cout <<"third print" << std::endl;
     // KeyFrameDB related vars
     ar & mnLoopQuery & mnLoopWords & mLoopScore & mnRelocQuery & mnRelocWords & mRelocScore;
     // LoopClosing related vars
@@ -809,7 +810,11 @@ void KeyFrame::save(Archive &ar, const unsigned int version) const
         ar & mbNotErase & mbToBeErased & mbBad & mHalfBaseline;
     }
     // Map Points
+    std::cout <<"fourth print" << std::endl;
     ar & mpMap;
+    std::cout <<"fifth print" << std::endl;
+    ar & mpNextKeyFrame;
+    ar & mpPreviousKeyFrame;
     // don't save mutex
 }
 template<class Archive>
@@ -832,22 +837,22 @@ void KeyFrame::load(Archive &ar, const unsigned int version)
     std::cout <<"before pointers serialize" << std::endl;
 //    std::cout <<"mpPreviousKeyFrame " << mpPreviousKeyFrame << std::endl;
 //    std::cout <<"mpNextKeyFrame " << mpNextKeyFrame << std::endl;
-    if(mpPreviousKeyFrame) {
-        ar & mpPreviousKeyFrame;
+    //if(mpPreviousKeyFrame) {
+    //    ar & mpPreviousKeyFrame;
         //std::cout << "ok saving the mpPreviousKeyFrame" << std::endl;
         //std::cout <<"mpPreviousKeyFrame " << mpPreviousKeyFrame << std::endl;
-    }
-    else{
-        mpPreviousKeyFrame = NULL;
-    }
-    if(mpNextKeyFrame) {
-        ar & mpNextKeyFrame;
+    //}
+    //else{
+    //    mpPreviousKeyFrame = nullptr;
+    //}
+    //if(mpNextKeyFrame) {
+    //    ar & mpNextKeyFrame;
         //std::cout << "ok saving the mpNextKeyFrame" << std::endl;
         //std::cout <<"mpNextKeyFrame " << mpNextKeyFrame << std::endl;
-    }
-    else{
-        mpNextKeyFrame = NULL;
-    }
+    //}
+    //else{
+    //    mpNextKeyFrame = nullptr;
+    //}
     std::cout <<"serialization of pointers ok" << std::endl;
     ar & mnBALocalForKF & mnBAFixedForKF;
     // KeyFrameDB related vars
@@ -901,6 +906,8 @@ void KeyFrame::load(Archive &ar, const unsigned int version)
     // Map Points
     ar & mpMap;
     // don't save mutex
+    ar & mpPreviousKeyFrame;
+    ar & mpNextKeyFrame;
 }
 void KeyFrame::SetPrevNeighbour(bool KFNeighbour)
 {
