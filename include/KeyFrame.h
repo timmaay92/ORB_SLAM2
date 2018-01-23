@@ -137,7 +137,10 @@ private:
     // serialize is recommended to be private
     friend class boost::serialization::access;
     template<class Archive>
-    void serialize(Archive &ar, const unsigned int version);
+    void load(Archive &ar, const unsigned int version);
+    template <class Archive>
+    void save(Archive &ar, const unsigned int version) const;
+    BOOST_SERIALIZATION_SPLIT_MEMBER()
 
     // The following variables are accesed from only 1 thread or never change (no mutex needed).
 public:
@@ -256,9 +259,9 @@ protected:
 
     Map* mpMap;
 
-    std::mutex mMutexPose;
-    std::mutex mMutexConnections;
-    std::mutex mMutexFeatures;
+    std::mutex mutable mMutexPose ;
+    std::mutex mutable mMutexConnections;
+    std::mutex mutable mMutexFeatures;
 
 
     // SE3 Odometry Pose
