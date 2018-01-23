@@ -25,8 +25,11 @@
 
 #include "Thirdparty/DBoW2/DBoW2/BowVector.h"
 #include "Thirdparty/DBoW2/DBoW2/FeatureVector.h"
+#include "Thirdparty/g2o/g2o/types/se3quat.h"
+#include "Converter.h"
 
 BOOST_SERIALIZATION_SPLIT_FREE(::cv::Mat)
+BOOST_SERIALIZATION_SPLIT_FREE(g2o::SE3Quat)
 namespace boost{
     namespace serialization {
 
@@ -88,6 +91,19 @@ namespace boost{
         size_t data_size = m.cols * m.rows * elem_size;
 
         ar & boost::serialization::make_array(m.ptr(), data_size);
+    }
+    template <class Archive>
+    void save(Archive &ar, const g2o::SE3Quat &m, const unsigned int version)
+    {
+        cv::Mat cm = ORB_SLAM2::Converter::toCvMat(m);
+        ar & cm;
+    }
+    template <class Archive>
+    void load(Archive &ar, g2o::SE3Quat& m, const unsigned int version)
+    {
+        cv::Mat cm;
+        ar & cm;
+        m = ORB_SLAM2::Converter::toSE3Quat(cm);
     }
     }
 }

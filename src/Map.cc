@@ -153,6 +153,8 @@ void Map::serialize(Archive &ar, const unsigned int version)
     ar & mspKeyFrames;
     ar & mvpReferenceMapPoints;
     ar & mnMaxKFid & mnBigChangeIdx;
+    ar & IsMapScaled;
+    ar & mT_wm_wo;
 }
 template void Map::serialize(boost::archive::binary_iarchive&, const unsigned int);
 template void Map::serialize(boost::archive::binary_oarchive&, const unsigned int);
