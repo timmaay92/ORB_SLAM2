@@ -198,6 +198,9 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
             KeyFrame* pKF = vpKFs[i];
             KeyFrame* pKFprev = pKF->GetPreviousKF();
 
+            if(!pKFprev)
+                continue;
+
             cv::Mat checkmat1 = Converter::toCvMat(pKFprev->GetOdomPose());
             cv::Mat checkmat2 = Converter::toCvMat(pKF->GetOdomPose());
 
@@ -580,6 +583,8 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
     {
         KeyFrame* pKFlist = *lit;
         KeyFrame* pKFprevs = pKFlist->GetPreviousKF();
+        if(!pKFprevs)
+            continue;
         if (!pKFprevs->mnBALocalForKF == pKF->mnId && !pKFprevs->mnBAFixedForKF == pKF->mnId)
         {
             g2o::VertexSE3Expmap * vSE3 = new g2o::VertexSE3Expmap();
@@ -737,7 +742,8 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
             KeyFrame* pKFi = *lit;
             KeyFrame* pKFprev = pKFi->GetPreviousKF();
 
-
+            if(!pKFprev)
+                continue;
             cv::Mat checkmat1 = Converter::toCvMat(pKFprev->GetOdomPose());
             cv::Mat checkmat2 = Converter::toCvMat(pKFi->GetOdomPose());
 
@@ -751,8 +757,7 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
             if(pKFi->mnId == pKF->mnBAFixedForKF)
                 continue;
 
-            if(!pKFprev)
-                continue;
+
 
 
             g2o::EdgeSE3Odometry* odometry = new g2o::EdgeSE3Odometry();

@@ -1,5 +1,5 @@
 argument1="Maqui"
-argument2="Vocabulary/ORBvoc.txt"
+argument2="Vocabulary/ORBvoc.bin"
 #argument2="Vocabulary/ORBvoc.bin"
 argument3="Examples/ROS/ORB_SLAM2/maqui_front.yaml"
 

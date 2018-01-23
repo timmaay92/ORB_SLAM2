@@ -75,6 +75,8 @@ CTestTestfile.cmake
 *.jpg
 *.jpeg
 *.png
+*.pgm
+cam_*
 
 # maps ignore
 *.bin
