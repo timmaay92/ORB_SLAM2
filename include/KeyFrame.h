@@ -80,6 +80,8 @@ public:
     KeyFrame* GetParent();
     bool hasChild(KeyFrame* pKF);
 
+    bool GetCurrentSession();
+    void SetCurrentSession(bool session);
     // Loop Edges
     void AddLoopEdge(KeyFrame* pKF);
     std::set<KeyFrame*> GetLoopEdges();
@@ -226,7 +228,7 @@ protected:
 
     cv::Mat Cw; // Stereo middel point. Only for visualization
 
-
+    bool mbIsCurrentSession;
 
     // MapPoints associated to keypoints
     std::vector<MapPoint*> mvpMapPoints;

@@ -55,6 +55,19 @@ KeyFrame::KeyFrame(Frame &F, Map *pMap, KeyFrameDatabase *pKFDB):
     SetPose(F.mTcw);
     SetOdomPose(F.mTf_w_c);
     SetPrevNeighbour(true);
+    SetCurrentSession(true);
+
+}
+bool KeyFrame::GetCurrentSession()
+{
+    unique_lock<mutex> lock(mMutexPose);
+    return mbIsCurrentSession;
+}
+
+void KeyFrame::SetCurrentSession(bool session)
+{
+    unique_lock<mutex> lock(mMutexPose);
+    mbIsCurrentSession = session;
 }
 
 void KeyFrame::ComputeBoW()

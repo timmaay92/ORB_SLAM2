@@ -587,14 +587,14 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
 
         if(!pLocalfixCheck || !pLocalforCheck)
         {
-            std::cout <<  "mnBA*ForkKF doesnt exist" << std::endl;
+            //std::cout <<  "mnBA*ForkKF doesnt exist" << std::endl;
             continue;
         }
-        std::cout << "pLocalforCheck: " << pLocalforCheck << std::endl;
-        std::cout << "\n #LocalforCheck: " << pKFprevs->mnBALocalForKF << std::endl;
-        std::cout << "\n pLocalfixCheck: " << pLocalfixCheck << std::endl;
-        std::cout << "\n #LocalfixCheck: " << pKFprevs->mnBAFixedForKF << std::endl;
-        std::cout << "\n pKFmnId: " << pKF->mnId << std::endl;
+        //std::cout << "pLocalforCheck: " << pLocalforCheck << std::endl;
+        //std::cout << "\n #LocalforCheck: " << pKFprevs->mnBALocalForKF << std::endl;
+        //std::cout << "\n pLocalfixCheck: " << pLocalfixCheck << std::endl;
+        //std::cout << "\n #LocalfixCheck: " << pKFprevs->mnBAFixedForKF << std::endl;
+        //std::cout << "\n pKFmnId: " << pKF->mnId << std::endl;
 
         if (pKFprevs->mnBALocalForKF != pKF->mnId && pKFprevs->mnBAFixedForKF != pKF->mnId)
         {
@@ -791,8 +791,8 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
             g2o::RobustKernelHuber* rk = new g2o::RobustKernelHuber;
             odometry->setRobustKernel(rk);
             rk->setDelta(thHuber6D);
-            std::cout << "Edge odometry matrix at local BA = " <<
-                         odomKFpKFi.to_homogeneous_matrix()    << std::endl;
+          //  std::cout << "Edge odometry matrix at local BA = " <<
+          //               odomKFpKFi.to_homogeneous_matrix()    << std::endl;
             optimizer.addEdge(odometry);
 
         }

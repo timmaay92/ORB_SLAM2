@@ -93,6 +93,9 @@ void MapDrawer::DrawKeyFrames(const bool bDrawKF, const bool bDrawGraph)
         for(size_t i=0; i<vpKFs.size(); i++)
         {
             KeyFrame* pKF = vpKFs[i];
+            if(!pKF->GetCurrentSession())
+                continue;
+
             cv::Mat Twc = pKF->GetPoseInverse().t();
 
             glPushMatrix();
@@ -136,9 +139,12 @@ void MapDrawer::DrawKeyFrames(const bool bDrawKF, const bool bDrawGraph)
 
         for(size_t i=0; i<vpKFs.size(); i++)
         {
+            if(!vpKFs[i]->GetCurrentSession())
+                continue;
             // Covisibility Graph
             const vector<KeyFrame*> vCovKFs = vpKFs[i]->GetCovisiblesByWeight(100);
             cv::Mat Ow = vpKFs[i]->GetCameraCenter();
+
             if(!vCovKFs.empty())
             {
                 for(vector<KeyFrame*>::const_iterator vit=vCovKFs.begin(), vend=vCovKFs.end(); vit!=vend; vit++)
@@ -261,4 +267,22 @@ void MapDrawer::GetCurrentOpenGLCameraMatrix(pangolin::OpenGlMatrix &M)
         M.SetIdentity();
 }
 
+void MapDrawer::ResetTrajectoryView()
+{
+ const vector<KeyFrame*> vpKFs = mpMap->GetAllKeyFrames();
+        for(size_t i=0; i<vpKFs.size(); i++)
+        {
+            KeyFrame* pKF = vpKFs[i];
+            pKF->SetCurrentSession(false);    
+        }
+}
+void MapDrawer::SetFullTrajectoryView()
+{
+ const vector<KeyFrame*> vpKFs = mpMap->GetAllKeyFrames();
+        for(size_t i=0; i<vpKFs.size(); i++)
+        {
+            KeyFrame* pKF = vpKFs[i];
+            pKF->SetCurrentSession(true);    
+        }
+}
 } //namespace ORB_SLAM
