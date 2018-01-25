@@ -84,7 +84,7 @@ Initializer.baseFrame: 0
 
 Topic.Camera: "/maqui/camera/front/image_raw"
 Topic.CameraFrame: "/CameraTop_optical_frame"
-
+Topic.CameraFrameNameToPublish: "/camera_orb_position"
 
 Topic.WorldFrame: "/odom"
 #Topic.WorldFrame: "/odom"

@@ -25,13 +25,14 @@ mbReferenceWorldFrame(false)
       int queueSize = (int) fsSettings["Topic.QueueSize"];
       baseFrameTopic = (std::string) fsSettings["Topic.BaseFrame"];
       useBaseFrame = (int) fsSettings["Initializer.baseFrame"];
+      cameraFrameNameToPublish = (std::string) fsSettings["Topic.CameraFrameNameToPublish"];
 
       mpSLAM = new ORB_SLAM2::System(strVocFile, strSettingsFile, ORB_SLAM2::System::MONOCULAR,true,true);
 
       if(useBaseFrame)
           broadCastTopic = baseFrameTopic + "_ORB";
       else
-          broadCastTopic = cameraFrameTopic + "_ORB";
+          broadCastTopic = cameraFrameNameToPublish;
 
       subImage = mpNodeHandler->subscribe(cameraTopic, 1, &SubscribeHandler::GrabImage, this);
       maqui_orientation = mpNodeHandler->advertise<geometry_msgs::PoseStamped>("/maqui/odom_ORB", queueSize);

@@ -84,6 +84,7 @@ private:
     std::string worldFrameTopic;
     std::string broadCastTopic;
     std::string baseFrameTopic;
+    std::string cameraFrameNameToPublish;
 
     // flags
     bool mbReferenceWorldFrame;
