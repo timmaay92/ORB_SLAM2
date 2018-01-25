@@ -28,9 +28,9 @@
 #include "ORBextractor.h"
 #include "Frame.h"
 #include "KeyFrameDatabase.h"
-
+#include "Converter.h"
 #include <mutex>
-
+#include "BoostArchiver.h"
 
 namespace ORB_SLAM2
 {
@@ -43,12 +43,16 @@ class KeyFrameDatabase;
 class KeyFrame
 {
 public:
+
     KeyFrame(Frame &F, Map* pMap, KeyFrameDatabase* pKFDB);
 
     // Pose functions
     void SetPose(const cv::Mat &Tcw);
+    void SetOdomPose(const g2o::SE3Quat &TF_w_c);
+    void UpdateTranslation(float s);
     cv::Mat GetPose();
     cv::Mat GetPoseInverse();
+    g2o::SE3Quat GetOdomPose();
     cv::Mat GetCameraCenter();
     cv::Mat GetStereoCenter();
     cv::Mat GetRotation();
@@ -76,6 +80,8 @@ public:
     KeyFrame* GetParent();
     bool hasChild(KeyFrame* pKF);
 
+    bool GetCurrentSession();
+    void SetCurrentSession(bool session);
     // Loop Edges
     void AddLoopEdge(KeyFrame* pKF);
     std::set<KeyFrame*> GetLoopEdges();
@@ -94,6 +100,12 @@ public:
     std::vector<size_t> GetFeaturesInArea(const float &x, const float  &y, const float  &r) const;
     cv::Mat UnprojectStereo(int i);
 
+    // neighbouring KF functions
+    KeyFrame* GetPreviousKF();
+    KeyFrame* GetNextKF();
+    void SetPreviousKF(KeyFrame* PrevKF);
+    void SetNextKF(KeyFrame* NextKF);
+
     // Image
     bool IsInImage(const float &x, const float &y) const;
 
@@ -105,6 +117,9 @@ public:
     void SetBadFlag();
     bool isBad();
 
+    //flag if the KF has a previous KeyFrame
+    void SetPrevNeighbour(bool KFNeighbour);//
+    bool HasPrevNeighbour();//
     // Compute Scene Depth (q=2 median). Used in monocular.
     float ComputeSceneMedianDepth(const int q);
 
@@ -116,6 +131,18 @@ public:
         return pKF1->mnId<pKF2->mnId;
     }
 
+public:
+    // for serialization
+    KeyFrame(); // Default constructor for serialization, need to deal with const member
+    void SetORBvocabulary(ORBVocabulary *porbv) {mpORBvocabulary=porbv;}
+private:
+    // serialize is recommended to be private
+    friend class boost::serialization::access;
+    template<class Archive>
+    void load(Archive &ar, const unsigned int version);
+    template <class Archive>
+    void save(Archive &ar, const unsigned int version) const;
+    BOOST_SERIALIZATION_SPLIT_MEMBER()
 
     // The following variables are accesed from only 1 thread or never change (no mutex needed).
 public:
@@ -188,6 +215,8 @@ public:
     const int mnMaxY;
     const cv::Mat mK;
 
+    bool isWorldFrame = false;
+
 
     // The following variables need to be accessed trough a mutex to be thread safe.
 protected:
@@ -198,6 +227,8 @@ protected:
     cv::Mat Ow;
 
     cv::Mat Cw; // Stereo middel point. Only for visualization
+
+    bool mbIsCurrentSession;
 
     // MapPoints associated to keypoints
     std::vector<MapPoint*> mvpMapPoints;
@@ -226,11 +257,21 @@ protected:
 
     float mHalfBaseline; // Only for visualization
 
+    bool mbKFNeighbour;
+
     Map* mpMap;
 
-    std::mutex mMutexPose;
-    std::mutex mMutexConnections;
-    std::mutex mMutexFeatures;
+    std::mutex mutable mMutexPose ;
+    std::mutex mutable mMutexConnections;
+    std::mutex mutable mMutexFeatures;
+
+
+    // SE3 Odometry Pose
+      g2o::SE3Quat mTF_w_c;
+
+      // pointers to neighbouring keyframes in trajectory
+      KeyFrame *mpPreviousKeyFrame;
+      KeyFrame *mpNextKeyFrame;
 };
 
 } //namespace ORB_SLAM

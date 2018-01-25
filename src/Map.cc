@@ -27,6 +27,7 @@ namespace ORB_SLAM2
 
 Map::Map():mnMaxKFid(0),mnBigChangeIdx(0)
 {
+    IsMapScaled = false;
 }
 
 void Map::AddKeyFrame(KeyFrame *pKF)
@@ -115,6 +116,17 @@ long unsigned int Map::GetMaxKFid()
     return mnMaxKFid;
 }
 
+void Map::SetInitialPose(g2o::SE3Quat T_wm_wo)
+{
+    unique_lock<mutex> lock(mMutexMap);
+    mT_wm_wo = T_wm_wo;
+}
+g2o::SE3Quat Map::GetInitialPose()
+{
+    unique_lock<mutex> lock(mMutexMap);
+    return mT_wm_wo;
+}
+
 void Map::clear()
 {
     for(set<MapPoint*>::iterator sit=mspMapPoints.begin(), send=mspMapPoints.end(); sit!=send; sit++)
@@ -128,6 +140,23 @@ void Map::clear()
     mnMaxKFid = 0;
     mvpReferenceMapPoints.clear();
     mvpKeyFrameOrigins.clear();
+
+    IsMapScaled = false;
 }
+
+template<class Archive>
+void Map::serialize(Archive &ar, const unsigned int version)
+{
+    // don't save mutex
+    ar & mspMapPoints;
+    ar & mvpKeyFrameOrigins;
+    ar & mspKeyFrames;
+    ar & mvpReferenceMapPoints;
+    ar & mnMaxKFid & mnBigChangeIdx;
+    ar & IsMapScaled;
+    ar & mT_wm_wo;
+}
+template void Map::serialize(boost::archive::binary_iarchive&, const unsigned int);
+template void Map::serialize(boost::archive::binary_oarchive&, const unsigned int);
 
 } //namespace ORB_SLAM
