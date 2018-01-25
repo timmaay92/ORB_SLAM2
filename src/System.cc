@@ -325,7 +325,10 @@ cv::Mat System::TrackMonocular(const cv::Mat &im, const double &timestamp)
     }
     else
     {
-        return Tcw;
+
+    cv::Mat Twc = InvertcvMat(Tcw.clone());
+
+        return Twc.clone();
     }
 //    return Tcw;
 }
@@ -536,6 +539,18 @@ void System::SaveTrajectoryKITTI(const string &filename)
     f.close();
     cout << endl << "trajectory saved!" << endl;
 }
+    cv::Mat System::InvertcvMat(cv::Mat Tcw)
+    {
+        cv::Mat Rcw = Tcw.rowRange(0,3).colRange(0,3);
+        cv::Mat tcw = Tcw.rowRange(0,3).col(3);
+        cv::Mat Rwc = Rcw.t();
+        cv::Mat Ow = -Rwc*tcw;
+
+        cv::Mat Twc = cv::Mat::eye(4,4,Tcw.type());
+        Rwc.copyTo(Twc.rowRange(0,3).colRange(0,3));
+        Ow.copyTo(Twc.rowRange(0,3).col(3));
+        return Twc.clone();
+    }
 
 int System::GetTrackingState()
 {
