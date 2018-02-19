@@ -822,8 +822,6 @@ float LocalMapping::ScaleRecovery()
 //             std::cout << " odometry frame (oTwc) = \n" << oTwc << std::endl;
 //             std::cout << "prev odometry frame (oTwc) = \n" << oTwc_prev << std::endl;
 
-            // A = orb frames
-            // B = odometry frames
             A.push_back(dCw);
             B.push_back(doTwc);
         }
