@@ -688,7 +688,6 @@ void Tracking::CreateInitialMapMonocular()
     // set the world orb frame (wo) wrt world maqui frame (wm) in the map
     mpMap->SetInitialPose(T_wm_wo);
 
-//    std::cout << "T_wm_wo = " << Converter::toCvMat(T_wm_wo) << std::endl;
     pKFini->SetPreviousKF(NULL);
     pKFini->SetNextKF(pKFcur);
     pKFcur->SetPreviousKF(pKFini);
@@ -1406,6 +1405,7 @@ void Tracking::UpdateLocalKeyFrames()
 
 bool Tracking::Relocalization()
 {
+    //std::cout << "relocalizing" << std::endl;
     // Compute Bag of Words Vector
     mCurrentFrame.ComputeBoW();
 

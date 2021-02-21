@@ -51,7 +51,7 @@ ORBextractor.nLevels: 8
 # Firstly we impose iniThFAST. If no corners are detected we impose a lower value minThFAST
 # You can lower these values if your images have low contrast			
 ORBextractor.iniThFAST: 20
-ORBextractor.minThFAST: 7
+ORBextractor.minThFAST: 4
 
 #--------------------------------------------------------------------------------------------
 # Viewer Parameters
@@ -84,12 +84,12 @@ Initializer.baseFrame: 0
 
 Topic.Camera: "/maqui/camera/front/image_raw"
 Topic.CameraFrame: "/CameraTop_optical_frame"
+Topic.CameraFrameNameToPublish: "/camera_orb_position"
 
-
-Topic.WorldFrame: "/map"
+Topic.WorldFrame: "/dummy_map"
 #Topic.WorldFrame: "/odom"
 #Topic.WorldFrame: "map2"
 Topic.TF: "tf"
 Topic.BaseFrame: "/base_link"
 
-# Map.mapfile: basement.bin
+Map.mapfile: basement.bin

@@ -26,6 +26,7 @@
 #include "MapDrawer.h"
 #include "Tracking.h"
 #include "System.h"
+#include "Map.h"
 
 #include <mutex>
 
@@ -36,12 +37,12 @@ class Tracking;
 class FrameDrawer;
 class MapDrawer;
 class System;
-
+class Map;
 class Viewer
 {
 public:
 
-    Viewer(System* pSystem, FrameDrawer* pFrameDrawer, MapDrawer* pMapDrawer, Tracking *pTracking, const string &strSettingPath, bool mbReuseMap);
+    Viewer(System* pSystem, FrameDrawer* pFrameDrawer, MapDrawer* pMapDrawer, Tracking *pTracking, Map *pMap, const string &strSettingPath, bool mbReuseMap);
 
 
     // Main thread function. Draw points, keyframes, the current camera pose and the last processed
@@ -62,11 +63,13 @@ private:
 
     bool Stop();
 
+    bool hadReset;
+
     System* mpSystem;
     FrameDrawer* mpFrameDrawer;
     MapDrawer* mpMapDrawer;
     Tracking* mpTracker;
-
+    Map* mpMap; 
     // 1/fps in ms
     double mT;
     float mImageWidth, mImageHeight;

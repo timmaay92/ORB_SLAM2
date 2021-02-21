@@ -80,6 +80,8 @@ public:
     KeyFrame* GetParent();
     bool hasChild(KeyFrame* pKF);
 
+    bool GetCurrentSession();
+    void SetCurrentSession(bool session);
     // Loop Edges
     void AddLoopEdge(KeyFrame* pKF);
     std::set<KeyFrame*> GetLoopEdges();
@@ -116,8 +118,8 @@ public:
     bool isBad();
 
     //flag if the KF has a previous KeyFrame
-    void SetPrevNeighbour(bool KFNeighbour);
-    bool HasPrevNeighbour();
+    void SetPrevNeighbour(bool KFNeighbour);//
+    bool HasPrevNeighbour();//
     // Compute Scene Depth (q=2 median). Used in monocular.
     float ComputeSceneMedianDepth(const int q);
 
@@ -137,7 +139,10 @@ private:
     // serialize is recommended to be private
     friend class boost::serialization::access;
     template<class Archive>
-    void serialize(Archive &ar, const unsigned int version);
+    void load(Archive &ar, const unsigned int version);
+    template <class Archive>
+    void save(Archive &ar, const unsigned int version) const;
+    BOOST_SERIALIZATION_SPLIT_MEMBER()
 
     // The following variables are accesed from only 1 thread or never change (no mutex needed).
 public:
@@ -223,7 +228,7 @@ protected:
 
     cv::Mat Cw; // Stereo middel point. Only for visualization
 
-
+    bool mbIsCurrentSession;
 
     // MapPoints associated to keypoints
     std::vector<MapPoint*> mvpMapPoints;
@@ -256,9 +261,9 @@ protected:
 
     Map* mpMap;
 
-    std::mutex mMutexPose;
-    std::mutex mMutexConnections;
-    std::mutex mMutexFeatures;
+    std::mutex mutable mMutexPose ;
+    std::mutex mutable mMutexConnections;
+    std::mutex mutable mMutexFeatures;
 
 
     // SE3 Odometry Pose

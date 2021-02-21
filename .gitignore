@@ -63,6 +63,7 @@ lib/
 CMakeCache.txt
 CMakeFiles
 CMakeScripts
+.idea
 Testing
 Makefile
 cmake_install.cmake
@@ -75,6 +76,8 @@ CTestTestfile.cmake
 *.jpg
 *.jpeg
 *.png
+*.pgm
+cam_*
 
 # maps ignore
 *.bin
